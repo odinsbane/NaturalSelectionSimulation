@@ -1,0 +1,53 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.orangepalantir</groupId>
+    <artifactId>natural-selection-simulation</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <name>Natural Selection Simulation.</name>
+    <url>https://github.com/odinsbane/NaturalSelectionSimulation</url>
+    <description>Small simulation where beasts gain and lose features over time to evolve to a landscape.</description>
+    <licenses>
+        <license>
+            <name>The MIT License (MIT)</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:https://github.com/odinsbane/NaturalSelectionSimulation.git</connection>
+        <developerConnection>scm:git:https://github.com/odinsbane/NaturalSelectionSimulation.git</developerConnection>
+        <tag>HEAD</tag>
+        <url>https://github.com/odinsbane/NaturalSelectionSimulation</url>
+    </scm>
+    <developers>
+        <developer>
+            <id>odinsbane</id>
+            <name>Matthew Smith</name>
+            <email>melkor@orangepalantir.org</email>
+            <url>https://orangepalantir.org</url>
+            <organization></organization>
+            <organizationUrl></organizationUrl>
+            <roles>
+                <role>lead</role>
+                <role>developer</role>
+                <role>debugger</role>
+                <role>reviewer</role>
+                <role>support</role>
+                <role>maintainer</role>
+            </roles>
+            <timezone>+1</timezone>
+        </developer>
+    </developers>
+    <build>
+    </build>
+    <dependencies>
+        <dependency>
+            <groupId>org.orangepalantir</groupId>
+            <artifactId>light-weight-graphing</artifactId>
+        </dependency>
+    </dependencies>
+</project>
