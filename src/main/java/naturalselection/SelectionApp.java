@@ -14,13 +14,13 @@ public class SelectionApp implements Runnable{
     NaturalSelection model;
     boolean VISUALS;
     public SelectionApp(){
-        VISUALS=false;
-        model = new NaturalSelection(null, false);
+        VISUALS=true;
+        model = new NaturalSelection(null, VISUALS);
         model.start();
     }
     public SelectionApp(BeastData bd){
         VISUALS=true;
-        model = new NaturalSelection(bd, true);
+        model = new NaturalSelection(bd, VISUALS);
         model.start();
     }
     public static void main(String[] args){

@@ -64,20 +64,12 @@ public class NaturalSelection{
         }
 
         if(bd==null){
-            terrain = new NaturalTerrain();            
-            beasties = new CopyOnWriteArrayList<Beast>();
-            for(int i = 0; i<100; i++){
-                for(int j = 0; j<200; j++){
-                    Amoeboid n = new Amoeboid(i*8, j*4, this);
-
-                    beasties.add(n);
-                }
-            }
+            //wait for it.
         }else{
             beasties = bd.beasts;
 
             terrain = bd.terrain;
-            terrain.refresh();
+
             terrain.updatePens(beasties);
 
             for(Beast b: beasties){
@@ -110,8 +102,26 @@ public class NaturalSelection{
         VISUALS = visuals;
     }
 
+    public void popluteBeasts(){
+        //terrain = new NaturalTerrain();
+        beasties = new CopyOnWriteArrayList<Beast>();
+        double consume = 0;
+        while(consume < terrain.production){
+
+            Amoeboid n = new Amoeboid(terrain.WIDTH/2, terrain.WIDTH/2, this);
+            consume += n.consume;
+            double x = n.radius + (terrain.WIDTH - 2*n.radius)*Math.random();
+            double y = n.radius + (terrain.HEIGHT - 2*n.radius)*Math.random();
+            n.setPosition(x, y);
+            beasties.add(n);
+            break;
+        }
+    }
+
     /** starts time tasks for updating image, moving the beasts, growing terrain and updating display*/
     public void start() {
+        long moveRate = 5l;
+        long growRate = 2000l;
         if(VISUALS){
             paint_loop.scheduleAtFixedRate(new TimerTask(){
                 public void run(){
@@ -130,11 +140,9 @@ public class NaturalSelection{
 
         move_loop.scheduleAtFixedRate(new TimerTask(){
             public void run(){
-
                 moveBeasts();
-
             }
-        }, 100l, 5l);
+        }, 100l, moveRate);
 
         event_loop.scheduleAtFixedRate(new TerrainGrowth(terrain), 2000, 2000);
         if(VISUALS)
@@ -201,7 +209,6 @@ public class NaturalSelection{
 
         for(Beast b: beasties){
             b.run();
-
         }
 
     }
@@ -259,7 +266,7 @@ public class NaturalSelection{
 
         String line = "total: " + beasties.size() + " size: "
                 + (size/count) + " velocity: " + (velocity/count
-                + "cosumption: " + consumption + "::" + terrain.production);
+                + "cosumption: " + consumption + " production: " + terrain.production);
         panel.updateLabel(line);
         System.out.println(count + " " + size/count + " " + velocity/count);
 
@@ -301,6 +308,11 @@ public class NaturalSelection{
     }
 
 
+    public void setTerrain(NaturalTerrain terrain) {
+        this.terrain = terrain;
+        if(beasties != null)
+            terrain.updatePens(beasties);
+    }
 }
 
 class BeastInteract extends TimerTask{

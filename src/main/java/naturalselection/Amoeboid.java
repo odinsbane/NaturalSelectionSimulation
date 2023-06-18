@@ -50,18 +50,18 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
 
         age = (int)(100*brain.nextDouble());
 
-        size = 8 + 4*brain.nextDouble();
+        size = 625;
         radius = Math.sqrt(size);
 
         MAX_VELOCITY = 0.5*brain.nextDouble();
 
-        reproductive_age = 105 - 5*brain.nextDouble();
-        loc = new Point2D.Double(x,y);
-        life = 5;
+        reproductive_age = 105 - 5*brain.nextDouble() + 1e6;
+
+        life = size*10;
         MAX_LIFE=size*20;
 
+        loc = new Point2D.Double(x,y);
         shape = new Ellipse2D.Double(loc.getX() - 0.5*radius,loc.getY() - 0.5*radius, radius, radius);
-
 
         double theta = 2*Math.PI*brain.nextDouble();
         vx = MAX_VELOCITY *Math.sin(theta);
@@ -136,7 +136,7 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
      */
     private void inheritTraits(Amoeboid ancestor){
         traits = new HashSet<BeastTraits>();
-        traits.addAll(ancestor.traits);
+        //traits.addAll(ancestor.traits);
         for(BeastTraits t: BeastTraits.values()){
             if(ancestor.traits.contains(t)){
                 if(brain.nextDouble()<0.99)
@@ -151,7 +151,6 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
                 good_terrain = ancestor.good_terrain;
             }else
                 chooseLand();
-
         }
     }
 
@@ -358,6 +357,11 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
             move();
         } 
     }
+    public void setPosition(double x, double y){
+        Rectangle2D rect = new Rectangle2D.Double();
+        loc.setLocation(x, y);
+        shape.setFrame(x - radius*0.5, y - radius*0.5, radius, radius);
+    }
 
     /** moves */
     public void move(){
@@ -373,10 +377,11 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         if(grazing)
             tmod*=0.5;
 
-        Rectangle2D rect = new Rectangle2D.Double(loc.getX() + tmod*vx - radius*0.5, loc.getY() + tmod*vy - radius*0.5, radius, radius);
+        double x = loc.getX() + tmod*vx;
+        double y = loc.getY() + tmod*vy;
+        Rectangle2D rect = new Rectangle2D.Double(x - radius*0.5, y - radius*0.5, radius, radius);
         if(model.checkBounds(rect)){
-            loc.setLocation(loc.getX() + tmod*vx, loc.getY() + tmod*vy);
-            shape.setFrame(rect);
+            setPosition(x, y);
         } else{
             changeDirections();
         }

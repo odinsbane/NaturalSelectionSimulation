@@ -25,19 +25,17 @@ import java.util.Set;
  */
 public class NaturalTerrain  implements Serializable {
 
-    int WIDTH=800;
-    int HEIGHT=800;
+    int WIDTH;
+    int HEIGHT;
 
-    int CELL_SIZE = 5;
-    int PEN_SIZE = 20;
+    int CELL_SIZE = 8;
+    int PEN_SIZE = 32;
 
     /** terrain image */
     transient BufferedImage scene;
     /** the graphics, a constant reference is used */
-    transient Graphics graphics;
-
-    double[][] food = new double[WIDTH/CELL_SIZE][HEIGHT/CELL_SIZE];
-    TerrainTypes[][] landscape = new TerrainTypes[WIDTH/CELL_SIZE][HEIGHT/CELL_SIZE];
+    double[][] food;
+    TerrainTypes[][] landscape;
 
     Rectangle2D bounds;
 
@@ -47,42 +45,25 @@ public class NaturalTerrain  implements Serializable {
     /** for keeping track of neighbors. */
     transient BeastPens pens = new BeastPens(WIDTH,HEIGHT,PEN_SIZE);
 
-    public double production = 0;
-    
+    double production = 0;
+
     NaturalTerrain(){
-        loadLandscape();
-        
 
 
-        
-        bounds = new Rectangle2D.Double(0,0,WIDTH, HEIGHT);
-        scene = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-        graphics = scene.createGraphics();
+        this(1024, 1024);
+        setLandscape(defaultLandscape()); ;
 
-        for(int i = 0; i<food.length; i++){
-            for(int j =0; j<food[0].length;j++){
-                TerrainTypes t = landscape[i][j];
-                food[i][j] = t.FOOD;
-                graphics.setColor(t.COLOR);
-                graphics.fillRect(i*CELL_SIZE, j*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                production += t.GROW;
-            }
-        }
 
     }
 
-    public void refresh(){
-        scene = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);        
+    public NaturalTerrain(int width, int height){
+        WIDTH = width;
+        HEIGHT = height;
+        bounds = new Rectangle2D.Double(0,0,WIDTH, HEIGHT);
+        scene = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        food = new double[WIDTH/CELL_SIZE][HEIGHT/CELL_SIZE];
         pens = new BeastPens(WIDTH,HEIGHT,PEN_SIZE);
-        graphics = scene.createGraphics();
 
-        for(int i = 0; i<food.length; i++){
-            for(int j =0; j<food[0].length;j++){
-                TerrainTypes t = landscape[i][j];
-                graphics.setColor(t.COLOR);
-                graphics.fillRect(i*CELL_SIZE, j*CELL_SIZE, CELL_SIZE, CELL_SIZE);
-            }
-        }
     }
 
     /** gets the terrain for a specific point
@@ -177,6 +158,7 @@ public class NaturalTerrain  implements Serializable {
      *
      */
     public void growFood(){
+        Graphics2D graphics = scene.createGraphics();
         for(int i = 0; i<food.length; i++){
             for(int j =0; j<food[0].length;j++){
                 double f = food[i][j];
@@ -202,13 +184,31 @@ public class NaturalTerrain  implements Serializable {
         }
 
     }
+    public void setLandscape(TerrainTypes[][] terrain){
 
+        this.landscape = terrain;
+        //scene = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = scene.createGraphics();
+
+        for(int i = 0; i<food.length; i++){
+            for(int j =0; j<food[0].length;j++){
+                TerrainTypes t = landscape[i][j];
+                graphics.setColor(t.COLOR);
+                graphics.fillRect(i*CELL_SIZE, j*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                food[i][j] = t.FOOD;
+                production += t.GROW;
+            }
+        }
+        graphics.dispose();
+
+    }
     /**
      * Sets up the landscape, this needs to be replace by reading an image and using the image
      * as a map.
      * 
      */
-    void loadLandscape(){
+    TerrainTypes[][] defaultLandscape(){
+        TerrainTypes[][] landscape =  new TerrainTypes[WIDTH/CELL_SIZE][HEIGHT/CELL_SIZE];
         double radius, x, y;
         RectangularShape deep_water, shallows, shores, grass;
         radius = 200;
@@ -293,6 +293,7 @@ public class NaturalTerrain  implements Serializable {
                 landscape[(int)x/CELL_SIZE + i][(int)y/CELL_SIZE + j] = TerrainTypes.grass;
             }
         }
+        return landscape;
     }
 
     /**
@@ -301,6 +302,9 @@ public class NaturalTerrain  implements Serializable {
      * @param b requires a complete list of beasts
      */
     public void updatePens(List<Beast> b){
+        if(pens == null){
+            pens = new BeastPens(WIDTH,HEIGHT,PEN_SIZE);
+        }
         pens.setupSpace(b);
 
     }
