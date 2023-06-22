@@ -53,7 +53,7 @@ public abstract class Beast implements Serializable {
     /** checks the terrain and looks for neighbors */
     abstract public void interact();
     /** moves the beast if it is moving.*/
-    abstract public void run();
+    abstract public void move();
 
     /**
       * for checking if it is still contained

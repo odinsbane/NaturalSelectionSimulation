@@ -13,7 +13,7 @@ import java.util.Random;
  *
  * User: mbs207
  */
-public class Amoeboid extends Beast implements Runnable,Serializable {
+public class Amoeboid extends Beast implements Serializable {
     final Ellipse2D shape;
 
     transient NaturalSelection model;
@@ -48,14 +48,14 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
      */
     public Amoeboid(double x, double y, NaturalSelection parent){
 
-        age = (int)(100*brain.nextDouble());
+        age = 0;
 
-        size = 625;
+        size = 10;
         radius = Math.sqrt(size);
 
         MAX_VELOCITY = 0.5*brain.nextDouble();
 
-        reproductive_age = 105 - 5*brain.nextDouble() + 1e6;
+        reproductive_age = size*(1 + 0.2 - 0.4*brain.nextDouble());
 
         life = size*10;
         MAX_LIFE=size*20;
@@ -73,13 +73,16 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         traits = new HashSet<BeastTraits>();
         initializeTraits();
         
-        consume = 1 + size  + MAX_VELOCITY;
+        consume = calculateConsume();
 
         trait_count = traits.size();
 
         setParent(parent);
     }
 
+    public double calculateConsume(){
+        return (1 + MAX_VELOCITY/2 + trait_count)*Math.sqrt(size);
+    }
     /**
      * Creates a descendant of the ancestor.  This will allow
      * more variation in mutiations and such, and the addition
@@ -95,9 +98,14 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         size = size<=1?1:size;
 
         radius = Math.sqrt(size);
-        
-        reproductive_age = reproductive_age<10 + size*5?10 + 5*size:reproductive_age;
-        
+
+        //limit to 0.6*size to 4*size;
+        if(reproductive_age < 0.6*size){
+            reproductive_age = Math.max(0.6*size, 1);
+        } else if(reproductive_age > 4*size){
+            reproductive_age = 4*size;
+        }
+
         MAX_VELOCITY = ancestor.MAX_VELOCITY + 0.05 - 0.1*brain.nextDouble();
         MAX_VELOCITY = MAX_VELOCITY>0?MAX_VELOCITY:0;
 
@@ -117,7 +125,7 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         inheritTraits(ancestor);
         initializeTraits();
 
-        consume = 1 + size  + MAX_VELOCITY + traits.size();
+        consume = calculateConsume();
 
         if(trait_count>ancestor.trait_count)
             c = new Color((int)((1<<24)*(brain.nextDouble())));
@@ -139,7 +147,7 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         //traits.addAll(ancestor.traits);
         for(BeastTraits t: BeastTraits.values()){
             if(ancestor.traits.contains(t)){
-                if(brain.nextDouble()<0.99)
+                if(brain.nextDouble()<0.999)
                     traits.add(t);
             } else if(brain.nextDouble()<0.001){
                 traits.add(t);
@@ -204,10 +212,19 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
             life-=0.2*consume;
             move_count++;
 
-            if(stops_to_eat&&(f>2*consume||life<2)){
-                moving=false;
+            if(stops_to_eat){
+                //decide to stop.
+                if( f > 10*consume && life < MAX_LIFE - consume) {
+                    //abundant & a little hungry
+                    moving = false;
+                    move_count = -1;
+                } else if(life < 2 * consume && f > 0.5 * consume){
+                    //very hungry and worth it.
+                    moving = false;
+                    move_count = -1;
+                }
             }  else if(redirect){
-                    redirect();
+                redirect();
             }
             if(grazes){
                 grazing=life<MAX_LIFE/2&&life>2;
@@ -216,14 +233,20 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
             }
         } else{
             life-=0.1*consume;
-            if(f>0){
-                    eatFood();
-            } else{
-                life-=0.1*consume; 
+            //when to move.
+            if(f > 10*consume && life < MAX_LIFE - consume){
+                eatFood();
+            } else if( f > consume && life < 2*consume ) {
+                eatFood();
+            } else if(f > 0.1*consume && life < consume) {
+                eatFood();
+            }
+            else{
+
                 move_count = 0;
                 moving=true;
-            }
 
+            }
         }
         if(life<=0)
             die();
@@ -232,15 +255,14 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         if(land_affinity){
             if(affinity_terrain != null && affinity_terrain.compareTo(nt.getType(loc))==0){
                 good_terrain=new Point2D.Double(loc.getX(), loc.getY());
-
             }
         }
         if(predator){
             for(Beast b: nt.getNeighbors(loc)){
-
                 kill(b);
-                if(life==MAX_LIFE&&conservative)
+                if(life==MAX_LIFE&&conservative){
                     break;
+                }
             }
         }
     }
@@ -250,15 +272,16 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
      *
      */
     void eatFood(){
-        if(stops_to_eat){
-            double v = consume;
-            if(conservative)
-                v = consume>MAX_LIFE-life?MAX_LIFE-life:consume;
-            double y = nt.eat(loc,v);
-            y = y<size?y:size;
-            life+=y;
-            life = life>MAX_LIFE?MAX_LIFE:life;
+        double v = consume;
+        if(conservative) {
+            v = consume > MAX_LIFE - life ? MAX_LIFE - life : consume;
         }
+        if(v > size) v = size;
+
+        double y = nt.eat(loc,v);
+
+        life+=y;
+        life = life>MAX_LIFE?MAX_LIFE:life;
     }
 
     /**
@@ -270,12 +293,12 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         if(b.c==c)
             return;
         if(!b.dead&&b.size<size&&shape.contains(b.loc)){
-            if(b.traits.contains(BeastTraits.evasive)&&brain.nextDouble()<0.25)
+            if(b.traits.contains(BeastTraits.evasive)&&brain.nextDouble()<0.25){
                 return;
+            }
 
-
-            model.killBeast(b);
             b.dead=true;
+            model.killBeast(b);
 
             life += b.life + b.size;
             life = life>MAX_LIFE?MAX_LIFE:life;
@@ -351,12 +374,6 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
         return shape.getBounds();
     }
 
-    /** moves */
-    public void run(){
-        if(moving){
-            move();
-        } 
-    }
     public void setPosition(double x, double y){
         Rectangle2D rect = new Rectangle2D.Double();
         loc.setLocation(x, y);
@@ -365,6 +382,9 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
 
     /** moves */
     public void move(){
+        if(!moving){
+            return;
+        }
         double tmod = 1;
         switch(nt.getType(loc)){
             case water:
@@ -423,10 +443,9 @@ public class Amoeboid extends Beast implements Runnable,Serializable {
     public void setParent(NaturalSelection ns){
         model = ns;
         nt = ns.terrain;
-        if(nt.checkBounds(shape.getBounds()))
-            model.scheduleBeastAction(this,50l);
-        else
+        if(!nt.checkBounds(shape.getBounds())) {
             die();
+        }
     }
 
     

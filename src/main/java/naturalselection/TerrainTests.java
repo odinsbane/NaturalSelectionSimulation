@@ -5,8 +5,8 @@ import javax.swing.*;
 public class TerrainTests {
 
     public static void main(String[] args){
-        int width = 128;
-        int height = 128;
+        int width = 512;
+        int height = 512;
 
         NaturalTerrain terrain = new NaturalTerrain(width, height);
         TerrainTypes[][] types = new TerrainTypes[width/terrain.CELL_SIZE][height/ terrain.CELL_SIZE];
@@ -19,7 +19,7 @@ public class TerrainTests {
         NaturalSelection model = new NaturalSelection(null, true);
         model.setTerrain(terrain);
         model.popluteBeasts();
-        model.start();
+        model.graph.show();
 
         JFrame y = new JFrame("My Frame");
         y.setSize(600,600);
@@ -27,6 +27,7 @@ public class TerrainTests {
 
         y.setContentPane(model.getPanel());
         y.setVisible(true);
-        model.graph.show();
+        model.start();
+
     }
 }

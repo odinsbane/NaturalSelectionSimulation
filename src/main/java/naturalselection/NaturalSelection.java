@@ -10,6 +10,9 @@ import java.util.HashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import lightgraph.DataSet;
 import lightgraph.Graph;
@@ -33,15 +36,6 @@ public class NaturalSelection{
     /** this contains all of the beasts */
     CopyOnWriteArrayList<Beast> beasties;
 
-    /** triggered quite often to cause beasts to move*/
-    Timer move_loop = new Timer();
-
-    /** tries to run a 20fps*/
-    Timer paint_loop = new Timer();
-
-    /** beast interactions and updating graphs run here */
-    Timer event_loop = new Timer();
-
     SelectionPanel panel;
 
     NaturalTerrain terrain;
@@ -55,7 +49,9 @@ public class NaturalSelection{
     double[] trait_ct;
 
     boolean VISUALS;
-
+    boolean running = true;
+    int SUB_STEPS = 10;
+    ScheduledExecutorService eventLoop = Executors.newSingleThreadScheduledExecutor();
     public NaturalSelection(BeastData bd, boolean visuals){
         if(visuals){
             this.base = new BufferedImage(view.width, view.height, BufferedImage.TYPE_INT_RGB);
@@ -98,6 +94,7 @@ public class NaturalSelection{
             graph.setXRange(0,21);
             graph.setYRange(0,100);
             graph.addData(sizes,size_ct);
+            graph.show(false);
         }
         VISUALS = visuals;
     }
@@ -106,7 +103,7 @@ public class NaturalSelection{
         //terrain = new NaturalTerrain();
         beasties = new CopyOnWriteArrayList<Beast>();
         double consume = 0;
-        while(consume < terrain.production){
+        while(consume*SUB_STEPS < terrain.production){
 
             Amoeboid n = new Amoeboid(terrain.WIDTH/2, terrain.WIDTH/2, this);
             consume += n.consume;
@@ -114,56 +111,33 @@ public class NaturalSelection{
             double y = n.radius + (terrain.HEIGHT - 2*n.radius)*Math.random();
             n.setPosition(x, y);
             beasties.add(n);
-            break;
         }
+        System.out.println(beasties.size() + " beasts added");
     }
 
     /** starts time tasks for updating image, moving the beasts, growing terrain and updating display*/
     public void start() {
-        long moveRate = 5l;
-        long growRate = 2000l;
         if(VISUALS){
-            paint_loop.scheduleAtFixedRate(new TimerTask(){
-                public void run(){
-                    updateImage();
-                    terrain.updatePens(beasties);
+            startPaintLoop();
+        }
+        long count = 0;
+        while(running){
+            for(int i = 0; i<SUB_STEPS; i++) {
+                for(Beast b: beasties){
+                    b.move();
                 }
-            },100l,50l);
-        }else{
-            paint_loop.scheduleAtFixedRate(new TimerTask(){
-                public void run(){
-                    terrain.updatePens(beasties);
-                }
-            },100l,50l);
+                terrain.updatePens(beasties);
+                interactionStep();
+            }
+
+            terrainGrowth();
+            updateDisplay();
+            count++;
+            if(count%100 == 1){
+                saveStep();
+            }
 
         }
-
-        move_loop.scheduleAtFixedRate(new TimerTask(){
-            public void run(){
-                moveBeasts();
-            }
-        }, 100l, moveRate);
-
-        event_loop.scheduleAtFixedRate(new TerrainGrowth(terrain), 2000, 2000);
-        if(VISUALS)
-            event_loop.scheduleAtFixedRate(new UpdateTask(this), 100, 2000);
-        event_loop.scheduleAtFixedRate(new TimerTask(){
-            public void run(){
-                BeastData bd = new BeastData(beasties, terrain);
-                bd.saveData();
-            }
-        },100,60000);
-
-    }
-
-    /**
-     * for use by a beast when creating a beast.
-     * @param b the beast
-     * @param period the time it takes to think
-     */
-    public void scheduleBeastAction(Beast b, long period){
-        event_loop.scheduleAtFixedRate(new BeastInteract(b),0l,period);
-
 
     }
 
@@ -204,13 +178,6 @@ public class NaturalSelection{
             }
         }
         g.setTransform(new AffineTransform(1,0,0,1,0,0));
-    }
-    public void moveBeasts(){
-
-        for(Beast b: beasties){
-            b.run();
-        }
-
     }
     public Container getPanel() {
         return panel;
@@ -268,14 +235,12 @@ public class NaturalSelection{
                 + (size/count) + " velocity: " + (velocity/count
                 + "cosumption: " + consumption + " production: " + terrain.production);
         panel.updateLabel(line);
-        System.out.println(count + " " + size/count + " " + velocity/count);
+        //System.out.println(count + " " + size/count + " " + velocity/count);
 
     }
 
     public void killBeast(Beast b){
-
        beasties.remove(b);
-        
     }
 
     public void addBeast(Beast b){
@@ -313,40 +278,30 @@ public class NaturalSelection{
         if(beasties != null)
             terrain.updatePens(beasties);
     }
-}
 
-class BeastInteract extends TimerTask{
-    Beast b;
-    BeastInteract(Beast b){
-        this.b = b;
-    }
-    public void run(){
-        if(!b.dead)
-            b.interact();
-        else
-            cancel();
-    }
-}
-
-class TerrainGrowth extends TimerTask{
-    NaturalTerrain terrain;
-    TerrainGrowth(NaturalTerrain nt){
-        terrain = nt;
-    }
-    public void run(){
+    public void terrainGrowth(){
         terrain.growFood();
     }
-
-}
-
-class UpdateTask extends TimerTask{
-    NaturalSelection ns;
-    UpdateTask(NaturalSelection n){
-        ns = n;
-
-    }
-    public void run(){
-        ns.showNumber();
+    public void paintStep(){
+        updateImage();
     }
 
+    public void updateDisplay(){
+        showNumber();
+    }
+    public void startPaintLoop(){
+        eventLoop.scheduleAtFixedRate(this::paintStep, 100L, 33L, TimeUnit.MILLISECONDS);
+    }
+    public void interactionStep(){
+        for(Beast b: beasties) {
+            if (!b.dead){
+                b.interact();
+            }
+        }
+    }
+
+    public void saveStep(){
+        BeastData bd = new BeastData(beasties, terrain);
+        bd.saveData();
+    }
 }
